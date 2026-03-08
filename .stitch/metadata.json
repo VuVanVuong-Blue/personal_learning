@@ -1,0 +1,21 @@
+{
+    "name": "projects/15389724836873529436",
+    "projectId": "15389724836873529436",
+    "title": "Personal Learning Platform Minimalist UI",
+    "visibility": "PRIVATE",
+    "createTime": "2026-03-07T18:27:46.814698Z",
+    "updateTime": "2026-03-07T18:27:46.814698Z",
+    "projectType": "PROJECT_DESIGN",
+    "origin": "STITCH",
+    "deviceType": "DESKTOP",
+    "designTheme": {
+        "colorMode": "LIGHT",
+        "font": "INTER",
+        "roundness": "ROUND_TWELVE",
+        "customColor": "#4f46e5"
+    },
+    "screens": {},
+    "metadata": {
+        "userRole": "OWNER"
+    }
+}
