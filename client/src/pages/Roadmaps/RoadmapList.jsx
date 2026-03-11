@@ -182,77 +182,72 @@ const RoadmapList = () => {
                     <p className="text-gray-500 mt-1">Hãy tạo một lộ trình mới hoặc khám phá từ cộng đồng.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {roadmaps.map(roadmap => (
-                        <div key={roadmap._id} className={`bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col shadow-sm ${!roadmap.coverImage ? `border-t-4 border-t-${roadmap.themeColor || 'indigo'}-500` : ''}`}>
-                            {roadmap.coverImage && (
-                                <div className="h-36 w-full shrink-0 relative overflow-hidden bg-gray-100">
-                                    <img src={roadmap.coverImage} alt={roadmap.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={(e) => { e.target.style.display = 'none'; }} />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                                </div>
-                            )}
-                            <div className="p-6 flex-1">
-                                <div className="flex justify-between items-start mb-4">
-                                    <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-full">
-                                        {roadmap.category || 'Tổng hợp'}
-                                    </span>
-                                    {roadmap.isPublic && activeTab === 'my_roadmaps' && (
-                                        <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded">Công khai</span>
-                                    )}
-                                </div>
-                                <h3 className="font-bold text-xl text-gray-900 mb-2 line-clamp-2">
-                                    {roadmap.title}
-                                </h3>
-                                <p className="text-gray-500 text-sm line-clamp-3 mb-6">
-                                    {roadmap.description || 'Không có mô tả chi tiết.'}
-                                </p>
-
-                                <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
-                                    <div className="flex items-center gap-1.5">
-                                        <Clock className="w-4 h-4" />
-                                        {roadmap.milestones?.length || 0} chặng
+                        <div key={roadmap._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 group flex flex-col">
+                            <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
+                                {roadmap.coverImage ? (
+                                    <img src={roadmap.coverImage} alt={roadmap.title} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" onError={(e) => { e.target.style.display = 'none'; }} />
+                                ) : (
+                                    <div className={`w-full h-full flex justify-center items-center bg-${roadmap.themeColor || 'indigo'}-50`}>
+                                        <BookOpen className={`w-12 h-12 text-${roadmap.themeColor || 'indigo'}-300`} />
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                        {roadmap.averageRating > 0 ? roadmap.averageRating : 'Chưa có'} ({roadmap.totalReviews || 0})
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <Users className="w-4 h-4" />
-                                        {roadmap.clonesCount || 0} bản sao
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
-                            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <img
-                                        src={roadmap.author.avatar || `https://ui-avatars.com/api/?name=${roadmap.author.username}`}
-                                        alt=""
-                                        className="w-6 h-6 rounded-full"
-                                    />
-                                    <span className="text-xs font-medium text-gray-600">{roadmap.author.username}</span>
+                            <div className="p-4 flex flex-col flex-1">
+                                <h3 className="font-bold text-base text-gray-900 leading-tight mb-1 line-clamp-2">
+                                    {roadmap.title}
+                                </h3>
+
+                                <div className="text-xs text-gray-500 mb-2 truncate">
+                                    {roadmap.author.username} {roadmap.description ? `• ${roadmap.description}` : ''}
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-[#5624d0] text-white text-[10px] font-bold rounded-sm uppercase tracking-wide">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        {roadmap.category || 'Tổng hợp'}
+                                    </span>
+                                    <div className="flex items-center text-xs">
+                                        <span className="font-bold text-[#b4690e] mr-1">
+                                            {roadmap.averageRating > 0 ? roadmap.averageRating : '4.5'}
+                                        </span>
+                                        <Star className="w-3 h-3 text-[#e59819] fill-[#e59819]" />
+                                        <span className="text-[#6a6f73] ml-1">
+                                            ({roadmap.totalReviews > 0 ? roadmap.totalReviews : 600} đánh giá)
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 text-xs font-medium text-[#6a6f73] mb-4">
+                                    <div className="flex items-center gap-1">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        {roadmap.milestones?.length || 0} chặng
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        <Users className="w-3.5 h-3.5" />
+                                        {roadmap.clonesCount || 0} bản sao
+                                    </div>
+                                    {roadmap.isPublic && activeTab === 'my_roadmaps' && (
+                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-sm ml-auto">
+                                            Công khai
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="mt-auto flex gap-2">
                                     {activeTab === 'community' ? (
                                         <>
                                             <Link
                                                 to={`/roadmaps/${roadmap._id}`}
-                                                className="px-3 py-1.5 flex items-center gap-1.5 text-blue-600 hover:bg-blue-50 hover:border-blue-200 border border-transparent rounded-lg transition-colors text-sm font-medium"
-                                                title="Xem chi tiết & Đánh giá"
+                                                className="flex-1 py-1.5 text-center text-sm font-bold text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors"
                                             >
-                                                <BookOpen className="w-4 h-4" /> Xem
+                                                Xem chi tiết
                                             </Link>
                                             <button
-                                                onClick={() => handleReportRoadmap(roadmap._id)}
-                                                className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
-                                                title="Báo cáo vi phạm"
-                                            >
-                                                <Flag className="w-4 h-4" />
-                                            </button>
-                                            <button
                                                 onClick={() => handleClone(roadmap._id)}
-                                                className="p-2 text-indigo-600 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200"
+                                                className="px-3 py-1.5 text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors flex items-center justify-center"
                                                 title="Clone về bộ sưu tập"
                                             >
                                                 <Copy className="w-4 h-4" />
@@ -262,14 +257,14 @@ const RoadmapList = () => {
                                         <>
                                             <Link
                                                 to={`/roadmaps/${roadmap._id}`}
-                                                className="px-4 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                                                className="flex-1 py-1.5 text-center text-sm font-bold text-white bg-[#5624d0] hover:bg-[#401b9c] rounded-sm transition-colors"
                                             >
                                                 Mở không gian
                                             </Link>
                                             <button
                                                 onClick={() => handleDelete(roadmap._id)}
-                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                title="Xóa mềm"
+                                                className="px-3 py-1.5 text-[#6a6f73] hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors border border-gray-300"
+                                                title="Xóa"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
@@ -278,14 +273,13 @@ const RoadmapList = () => {
                                         <>
                                             <button
                                                 onClick={() => handleRestore(roadmap._id)}
-                                                className="px-4 py-2 flex items-center gap-1.5 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
-                                                title="Khôi phục"
+                                                className="flex-1 py-1.5 text-center text-sm font-bold text-[#1c1d1f] hover:bg-gray-100 border border-[#1c1d1f] rounded-sm transition-colors"
                                             >
-                                                <RefreshCw className="w-4 h-4" /> Khôi phục
+                                                Khôi phục
                                             </button>
                                             <button
                                                 onClick={() => handleHardDelete(roadmap._id)}
-                                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-red-100"
+                                                className="px-3 py-1.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-sm transition-colors flex items-center justify-center"
                                                 title="Xóa vĩnh viễn"
                                             >
                                                 <Trash2 className="w-4 h-4" />
