@@ -223,7 +223,8 @@ const SortableMilestone = ({
     handleEditTask, handleDeleteTask, isEditing, setIsEditing, editedContent, 
     setEditedContent, handleSaveContent, resources, handleDeleteResource, 
     isAddingResource, setIsAddingResource, resourceForm, setResourceForm, 
-    handleAddResource, handleUpdateAssessment, localReflection, setLocalReflection, handleSaveReflection 
+    handleAddResource, handleUpdateAssessment, localReflection, setLocalReflection, handleSaveReflection,
+    addingTaskMilestoneId, setAddingTaskMilestoneId, newTaskTitle, setNewTaskTitle
 }) => {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: `milestone-${milestone._id}` });
 
@@ -289,10 +290,13 @@ const SortableMilestone = ({
                     
                     {/* Add Task Button */}
                     <button
-                        onClick={() => handleAddTask(milestone._id)}
-                        className="w-full mt-2 py-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 font-bold hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-all flex justify-center items-center gap-2"
+                        onClick={() => { setAddingTaskMilestoneId(milestone._id); setNewTaskTitle(''); }}
+                        className="group w-full mt-3 py-3.5 px-4 rounded-xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 hover:bg-indigo-50 transition-all flex items-center justify-center gap-2.5 text-indigo-400 hover:text-indigo-600"
                     >
-                        <Plus className="w-5 h-5" /> Thêm Bài Học Mới Vào Chặng Này
+                        <span className="w-6 h-6 rounded-full bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center transition-colors shrink-0">
+                            <Plus className="w-3.5 h-3.5" />
+                        </span>
+                        <span className="font-semibold text-sm">Thêm bài học mới vào chặng này</span>
                     </button>
                 </div>
             )}
@@ -319,6 +323,20 @@ const RoadmapWorkspace = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editedContent, setEditedContent] = useState('');
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+    // Add Task inline form
+    const [addingTaskMilestoneId, setAddingTaskMilestoneId] = useState(null);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+
+    // Edit / Delete Task modals
+    const [editingTask, setEditingTask] = useState(null); // { milestoneId, taskId, title }
+    const [deletingTask, setDeletingTask] = useState(null); // { milestoneId, taskId, title }
+
+    // Add / Edit / Delete Milestone modals
+    const [addingMilestone, setAddingMilestone] = useState(false);
+    const [newMilestoneTitle, setNewMilestoneTitle] = useState('');
+    const [editingMilestone, setEditingMilestone] = useState(null); // { milestoneId, title }
+    const [deletingMilestone, setDeletingMilestone] = useState(null); // { milestoneId, title }
     
     // Resources & Assessment State
     const [isAddingResource, setIsAddingResource] = useState(false);
@@ -365,9 +383,16 @@ const RoadmapWorkspace = () => {
     // ... Copying all state mutation logic verbatim ...
     const toggleMilestone = (milestoneId) => setExpandedMilestones(prev => ({ ...prev, [milestoneId]: !prev[milestoneId] }));
 
-    const handleAddMilestone = async () => {
-        const title = prompt("Nhập tên chặng (Milestone):");
-        if (!title) return;
+    const handleAddMilestone = () => {
+        setNewMilestoneTitle('');
+        setAddingMilestone(true);
+    };
+
+    const handleConfirmAddMilestone = async () => {
+        if (!newMilestoneTitle.trim()) return;
+        const title = newMilestoneTitle.trim();
+        setAddingMilestone(false);
+        setNewMilestoneTitle('');
         try {
             const newMilestones = [...(roadmap.milestones || []), { title, tasks: [] }];
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -378,8 +403,10 @@ const RoadmapWorkspace = () => {
     };
 
     const handleAddTask = async (milestoneId) => {
-        const title = prompt("Nhập tên bài học (Task):");
-        if (!title) return;
+        if (!newTaskTitle.trim()) return;
+        const title = newTaskTitle.trim();
+        setAddingTaskMilestoneId(null);
+        setNewTaskTitle('');
         try {
             const newMilestones = roadmap.milestones.map(m => m._id === milestoneId ? { ...m, tasks: [...m.tasks, { title, content: '', resources: [] }] } : m);
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -390,9 +417,14 @@ const RoadmapWorkspace = () => {
         } catch (error) { toast.error("Lỗi khi thêm bài học"); }
     };
 
-    const handleEditMilestone = async (milestoneId, currentTitle) => {
-        const title = prompt("Nhập tên chặng mới:", currentTitle);
-        if (!title || title === currentTitle) return;
+    const handleEditMilestone = (milestoneId, currentTitle) => {
+        setEditingMilestone({ milestoneId, title: currentTitle });
+    };
+
+    const handleConfirmEditMilestone = async () => {
+        if (!editingMilestone || !editingMilestone.title.trim()) return;
+        const { milestoneId, title } = editingMilestone;
+        setEditingMilestone(null);
         try {
             const newMilestones = roadmap.milestones.map(m => m._id === milestoneId ? { ...m, title } : m);
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -401,8 +433,15 @@ const RoadmapWorkspace = () => {
         } catch (error) { toast.error("Lỗi"); }
     };
 
-    const handleDeleteMilestone = async (milestoneId) => {
-        if (!window.confirm("Xóa chặng và toàn bộ bài học?")) return;
+    const handleDeleteMilestone = (milestoneId) => {
+        const milestone = roadmap.milestones.find(m => m._id === milestoneId);
+        setDeletingMilestone({ milestoneId, title: milestone?.title || 'chặng này' });
+    };
+
+    const handleConfirmDeleteMilestone = async () => {
+        if (!deletingMilestone) return;
+        const { milestoneId } = deletingMilestone;
+        setDeletingMilestone(null);
         try {
             const newMilestones = roadmap.milestones.filter(m => m._id !== milestoneId);
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -411,9 +450,14 @@ const RoadmapWorkspace = () => {
         } catch (error) { toast.error("Lỗi"); }
     };
 
-    const handleEditTask = async (milestoneId, taskId, currentTitle) => {
-        const title = prompt("Nhập tên bài học mới:", currentTitle);
-        if (!title || title === currentTitle) return;
+    const handleEditTask = (milestoneId, taskId, currentTitle) => {
+        setEditingTask({ milestoneId, taskId, title: currentTitle });
+    };
+
+    const handleConfirmEditTask = async () => {
+        if (!editingTask || !editingTask.title.trim()) return;
+        const { milestoneId, taskId, title } = editingTask;
+        setEditingTask(null);
         try {
             const newMilestones = roadmap.milestones.map(m => m._id === milestoneId ? { ...m, tasks: m.tasks.map(t => t._id === taskId ? { ...t, title } : t) } : m);
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -422,8 +466,16 @@ const RoadmapWorkspace = () => {
         } catch (error) { toast.error("Lỗi"); }
     };
 
-    const handleDeleteTask = async (milestoneId, taskId) => {
-        if (!window.confirm("Bạn có chắc muốn xóa bài học này?")) return;
+    const handleDeleteTask = (milestoneId, taskId) => {
+        const milestone = roadmap.milestones.find(m => m._id === milestoneId);
+        const task = milestone?.tasks.find(t => t._id === taskId);
+        setDeletingTask({ milestoneId, taskId, title: task?.title || 'bài học này' });
+    };
+
+    const handleConfirmDeleteTask = async () => {
+        if (!deletingTask) return;
+        const { milestoneId, taskId } = deletingTask;
+        setDeletingTask(null);
         try {
             const newMilestones = roadmap.milestones.map(m => m._id === milestoneId ? { ...m, tasks: m.tasks.filter(t => t._id !== taskId) } : m);
             const res = await axiosClient.put(`/roadmaps/${id}`, { milestones: newMilestones });
@@ -598,7 +650,7 @@ const RoadmapWorkspace = () => {
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                 <SortableContext items={roadmap.milestones.map(m => m._id)} strategy={verticalListSortingStrategy}>
                                     {roadmap.milestones?.map((milestone, idx) => (
-                                        <SortableMilestone
+                                    <SortableMilestone
                                             key={milestone._id} milestone={milestone} idx={idx} expanded={expandedMilestones[milestone._id] !== false}
                                             toggleMilestone={toggleMilestone} activeTaskId={activeTaskId} setActiveTaskId={setActiveTaskId}
                                             handleToggleComplete={handleToggleComplete} handleAddTask={handleAddTask} handleEditMilestone={handleEditMilestone}
@@ -608,6 +660,8 @@ const RoadmapWorkspace = () => {
                                             setIsAddingResource={setIsAddingResource} resourceForm={resourceForm} setResourceForm={setResourceForm}
                                             handleAddResource={handleAddResource} handleUpdateAssessment={handleUpdateAssessment} localReflection={localReflection}
                                             setLocalReflection={setLocalReflection} handleSaveReflection={handleSaveReflection}
+                                            addingTaskMilestoneId={addingTaskMilestoneId} setAddingTaskMilestoneId={setAddingTaskMilestoneId}
+                                            newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle}
                                         />
                                     ))}
                                 </SortableContext>
@@ -682,6 +736,141 @@ const RoadmapWorkspace = () => {
             <EditRoadmapModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} roadmap={roadmap} onUpdate={(updated) => setRoadmap(updated)} />
             {activeTaskId && <PomodoroTimer roadmapId={roadmap._id} taskId={activeTaskId} />}
             <AIChatbot currentTask={activeTask} />
+
+            {/* Add Task Modal */}
+            {addingTaskMilestoneId && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { setAddingTaskMilestoneId(null); setNewTaskTitle(''); } }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-extrabold text-slate-900">Thêm bài học mới</h3>
+                                <p className="text-sm text-slate-500 mt-0.5">Chặng: <span className="font-semibold text-indigo-600">{roadmap.milestones?.find(m => m._id === addingTaskMilestoneId)?.title}</span></p>
+                            </div>
+                            <button onClick={() => { setAddingTaskMilestoneId(null); setNewTaskTitle(''); }} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tên bài học</label>
+                            <input autoFocus type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddTask(addingTaskMilestoneId); if (e.key === 'Escape') { setAddingTaskMilestoneId(null); setNewTaskTitle(''); } }} placeholder="VD: Giới thiệu về React Hooks..." className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white placeholder:text-slate-400 transition-all" />
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => handleAddTask(addingTaskMilestoneId)} disabled={!newTaskTitle.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-100"><Plus className="w-4 h-4" /> Thêm bài học</button>
+                            <button onClick={() => { setAddingTaskMilestoneId(null); setNewTaskTitle(''); }} className="px-5 py-3 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Task Modal */}
+            {editingTask && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setEditingTask(null); }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-extrabold text-slate-900">Sửa tên bài học</h3>
+                            <button onClick={() => setEditingTask(null)} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tên bài học</label>
+                            <input
+                                autoFocus
+                                type="text"
+                                value={editingTask.title}
+                                onChange={e => setEditingTask(prev => ({ ...prev, title: e.target.value }))}
+                                onKeyDown={e => { if (e.key === 'Enter') handleConfirmEditTask(); if (e.key === 'Escape') setEditingTask(null); }}
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white transition-all"
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={handleConfirmEditTask} disabled={!editingTask.title.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-100"><Save className="w-4 h-4" /> Lưu thay đổi</button>
+                            <button onClick={() => setEditingTask(null)} className="px-5 py-3 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Task Modal */}
+            {deletingTask && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setDeletingTask(null); }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
+                        <div className="flex flex-col items-center text-center gap-3">
+                            <div className="w-14 h-14 rounded-full bg-red-50 border-2 border-red-100 flex items-center justify-center">
+                                <Trash2 className="w-6 h-6 text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold text-slate-900">Xóa bài học?</h3>
+                                <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">Bạn sắp xóa bài học <span className="font-semibold text-slate-800">“{deletingTask.title}”</span>. Hành động này không thể hoàn tác.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeletingTask(null)} className="flex-1 px-4 py-3 text-sm font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Giữ lại</button>
+                            <button onClick={handleConfirmDeleteTask} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /> Xóa bài học</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Milestone Modal */}
+            {addingMilestone && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) { setAddingMilestone(false); setNewMilestoneTitle(''); } }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-extrabold text-slate-900">Thêm chặng mới</h3>
+                                <p className="text-sm text-slate-500 mt-0.5">Chặng là một chương hoặc giai đoạn trong lộ trình học.</p>
+                            </div>
+                            <button onClick={() => { setAddingMilestone(false); setNewMilestoneTitle(''); }} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tên chặng</label>
+                            <input autoFocus type="text" value={newMilestoneTitle} onChange={e => setNewMilestoneTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleConfirmAddMilestone(); if (e.key === 'Escape') { setAddingMilestone(false); setNewMilestoneTitle(''); } }} placeholder="VD: Giới thiệu & Nền tảng cơ bản..." className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white placeholder:text-slate-400 transition-all" />
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={handleConfirmAddMilestone} disabled={!newMilestoneTitle.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-100"><Plus className="w-4 h-4" /> Thêm chặng</button>
+                            <button onClick={() => { setAddingMilestone(false); setNewMilestoneTitle(''); }} className="px-5 py-3 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Milestone Modal */}
+            {editingMilestone && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setEditingMilestone(null); }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-extrabold text-slate-900">Sửa tên chặng</h3>
+                            <button onClick={() => setEditingMilestone(null)} className="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"><X className="w-4 h-4" /></button>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold text-slate-600 uppercase tracking-widest">Tên chặng</label>
+                            <input autoFocus type="text" value={editingMilestone.title} onChange={e => setEditingMilestone(prev => ({ ...prev, title: e.target.value }))} onKeyDown={e => { if (e.key === 'Enter') handleConfirmEditMilestone(); if (e.key === 'Escape') setEditingMilestone(null); }} className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white transition-all" />
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={handleConfirmEditMilestone} disabled={!editingMilestone.title.trim()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-md shadow-indigo-100"><Save className="w-4 h-4" /> Lưu thay đổi</button>
+                            <button onClick={() => setEditingMilestone(null)} className="px-5 py-3 text-sm font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Milestone Modal */}
+            {deletingMilestone && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setDeletingMilestone(null); }} style={{ background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)' }}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5">
+                        <div className="flex flex-col items-center text-center gap-3">
+                            <div className="w-14 h-14 rounded-full bg-red-50 border-2 border-red-100 flex items-center justify-center">
+                                <Trash2 className="w-6 h-6 text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold text-slate-900">Xóa chặng?</h3>
+                                <p className="text-sm text-slate-500 mt-1.5 leading-relaxed">Bạn sắp xóa chặng <span className="font-semibold text-slate-800">"{deletingMilestone.title}"</span> cùng <span className="font-semibold text-red-600">toàn bộ bài học</span> bên trong. Hành động này không thể hoàn tác.</p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeletingMilestone(null)} className="flex-1 px-4 py-3 text-sm font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Giữ lại</button>
+                            <button onClick={handleConfirmDeleteMilestone} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /> Xóa chặng</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

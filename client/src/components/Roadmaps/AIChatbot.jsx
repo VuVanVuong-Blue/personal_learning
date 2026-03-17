@@ -73,13 +73,11 @@ const AIChatbot = ({ currentTask }) => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-full shadow-xl hover:shadow-indigo-500/30 transition-all transform hover:-translate-y-1 z-50 flex items-center justify-center group"
             >
                 <Sparkles className="w-6 h-6 animate-pulse" />
-                <span className="absolute right-full mr-4 bg-gray-900 text-white text-xs font-semibold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                    Hỏi AI Mentor
-                    <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div>
-                </span>
+                {/* <span className="absolute right-full mr-4 bg-gray-900 text-white text-xs font-semibold py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none"> */}
+                {/* <div className="absolute top-1/2 -right-1.5 -translate-y-1/2 border-4 border-transparent border-l-gray-900"></div> */}
+                {/* </span> */}
             </button>
         );
     }
