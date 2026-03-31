@@ -1,12 +1,30 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Bell, Flame, User, LogOut, Shield } from 'lucide-react';
-import { useState } from 'react';
+import { Search, Bell, Flame, User, LogOut, Shield, BookOpen, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import axiosClient from '../../api/axiosClient';
 
 const TopNavbar = () => {
     const { user, logout } = useAuth();
     const location = useLocation();
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    // Search Logic
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+    const [roadmaps, setRoadmaps] = useState([]);
+
+    useEffect(() => {
+        const fetchSearchData = async () => {
+            try {
+                const res = await axiosClient.get('/roadmaps');
+                setRoadmaps(res.data);
+            } catch (error) {
+                console.error("Lỗi khi tải dữ liệu tìm kiếm", error);
+            }
+        };
+        if (user) fetchSearchData();
+    }, [user]);
 
     if (!user) return null;
 
@@ -46,14 +64,65 @@ const TopNavbar = () => {
                     </nav>
                 </div>
 
-                {/* Center: Search Bar */}
+                {/* Center: Search Bar with Dropdown */}
                 <div className="hidden lg:flex flex-1 max-w-xl mx-8 relative group">
                     <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-indigo-500 transition-colors" />
                     <input 
                         type="text" 
                         placeholder="Tìm kiếm khóa học, kỹ năng..." 
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowSearchDropdown(e.target.value.length > 0);
+                        }}
+                        onFocus={() => searchQuery.length > 0 && setShowSearchDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
                         className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-full pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 transition-all hover:bg-white"
                     />
+
+                    {/* Global Search Dropdown */}
+                    {showSearchDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[60]">
+                            <div className="max-h-[350px] overflow-y-auto p-2">
+                                {roadmaps.filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
+                                    roadmaps
+                                        .filter(r => r.title.toLowerCase().includes(searchQuery.toLowerCase()))
+                                        .slice(0, 6)
+                                        .map(r => (
+                                            <Link
+                                                key={r._id}
+                                                to={`/roadmaps/${r._id}`}
+                                                onClick={() => {
+                                                    setSearchQuery('');
+                                                    setShowSearchDropdown(false);
+                                                }}
+                                                className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors group/item"
+                                            >
+                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-indigo-50 text-indigo-500 shrink-0`}>
+                                                    <BookOpen className="w-5 h-5" />
+                                                </div>
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <p className="text-sm font-bold text-slate-900 truncate group-hover/item:text-indigo-600">{r.title}</p>
+                                                    <p className="text-[11px] text-slate-500 truncate">
+                                                        {r.author?.username} • {r.milestones?.length || 0} chặng
+                                                    </p>
+                                                </div>
+                                                <ArrowRight className="w-4 h-4 text-slate-300 group-hover/item:text-indigo-400 group-hover/item:translate-x-1 transition-all" />
+                                            </Link>
+                                        ))
+                                ) : (
+                                    <div className="p-8 text-center">
+                                        <p className="text-sm text-slate-400">Không tìm thấy lộ trình phù hợp</p>
+                                    </div>
+                                )}
+                            </div>
+                            {searchQuery.length > 0 && (
+                                <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gợi ý tìm kiếm nhanh</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Actions & Profile */}

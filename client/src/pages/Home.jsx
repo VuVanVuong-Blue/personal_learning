@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import axiosClient from '../api/axiosClient';
 import { Clock, CheckCircle2, Flame, Play, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -57,12 +59,22 @@ const Heatmap = () => {
 
 const Home = () => {
     const { user } = useAuth();
+    const [homeRoadmaps, setHomeRoadmaps] = useState([]);
 
-    // Dummy active roadmaps for now
-    const dummyRoadmaps = [
-        { _id: '1', title: 'React Hooks Masterclass', progress: 65, totalTasks: 20, completed: 13, category: 'Lập trình' },
-        { _id: '2', title: 'IELTS Writing 7.0', progress: 30, totalTasks: 40, completed: 12, category: 'Ngoại ngữ' }
-    ];
+    useEffect(() => {
+        if (user) {
+            const fetchMyRoadmaps = async () => {
+                try {
+                    const res = await axiosClient.get('/roadmaps');
+                    const filtered = res.data.filter(r => r.author?._id === user._id && !r.isDeleted);
+                    setHomeRoadmaps(filtered.slice(0, 3));
+                } catch (error) {
+                    console.error("Lỗi khi tải lộ trình:", error);
+                }
+            };
+            fetchMyRoadmaps();
+        }
+    }, [user]);
 
     if (!user) {
         return (
@@ -346,23 +358,36 @@ const Home = () => {
                         <Link to="/roadmaps" className="text-sm font-bold text-indigo-600 hover:text-indigo-700">Xem tất cả</Link>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {dummyRoadmaps.map((roadmap) => (
-                            <Link key={roadmap._id} to={`/roadmaps/${roadmap._id}`} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all group">
-                                <span className="inline-block px-3 py-1 bg-slate-50 text-slate-600 text-xs font-semibold rounded-full mb-4">
-                                    {roadmap.category}
-                                </span>
-                                <h4 className="text-lg font-bold text-slate-900 mb-8 group-hover:text-indigo-600 transition-colors line-clamp-2">
-                                    {roadmap.title}
-                                </h4>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-slate-500 font-medium">{roadmap.completed}/{roadmap.totalTasks} bài học</span>
-                                    <span className="font-bold text-indigo-600">{roadmap.progress}%</span>
-                                </div>
-                                <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
-                                    <div className="bg-indigo-500 h-full rounded-full transition-all duration-1000" style={{ width: `${roadmap.progress}%` }}></div>
-                                </div>
-                            </Link>
-                        ))}
+                        {homeRoadmaps.map((roadmap) => {
+                            const totalTasks = roadmap.milestones?.reduce((acc, m) => acc + (m.tasks?.length || 0), 0) || 0;
+                            const completedTasks = roadmap.milestones?.reduce((acc, m) => acc + (m.tasks?.filter(t => t.isCompleted)?.length || 0), 0) || 0;
+                            const progressPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+                            return (
+                                <Link key={roadmap._id} to={`/roadmaps/${roadmap._id}`} className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all group flex flex-col">
+                                    <span className="w-fit px-3 py-1 bg-slate-50 text-slate-600 text-xs font-semibold rounded-full mb-4">
+                                        {roadmap.category || 'Tổng hợp'}
+                                    </span>
+                                    <h4 className="text-lg font-bold text-slate-900 mb-8 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                                        {roadmap.title}
+                                    </h4>
+                                    <div className="mt-auto">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500 font-medium">{roadmap.milestones?.length || 0} chặng</span>
+                                            <span className="font-bold text-indigo-600">{progressPercent}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 rounded-full h-1.5 mt-3 overflow-hidden">
+                                            <div className="bg-indigo-500 h-full rounded-full transition-all duration-1000" style={{ width: `${progressPercent}%` }}></div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                        {homeRoadmaps.length === 0 && (
+                            <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-8 text-slate-500 bg-white rounded-2xl border border-slate-200 border-dashed">
+                                Chưa có lộ trình nào. Hãy tạo lộ trình mới để bắt đầu học!
+                            </div>
+                        )}
                     </div>
                 </div>
 

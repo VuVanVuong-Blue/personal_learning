@@ -1,4 +1,5 @@
 import Roadmap from '../models/Roadmap.js';
+import StudySession from '../models/StudySession.js';
 
 // Get all roadmaps (public + user's own)
 export const getRoadmaps = async (req, res) => {
@@ -94,6 +95,10 @@ export const cloneRoadmap = async (req, res) => {
         const originalRoadmap = await Roadmap.findOne({ _id: req.params.id, isPublic: true, isDeleted: false });
         if (!originalRoadmap) return res.status(404).json({ message: 'Không tìm thấy lộ trình public' });
 
+        if (originalRoadmap.author.toString() === req.user.id) {
+            return res.status(400).json({ message: 'Bạn không thể clone lộ trình của chính mình' });
+        }
+
         // Update clones count on original
         originalRoadmap.clonesCount += 1;
         await originalRoadmap.save();
@@ -182,6 +187,16 @@ export const hardDeleteRoadmap = async (req, res) => {
     }
 };
 
+// Permanently delete all roadmaps in trash
+export const clearAllTrash = async (req, res) => {
+    try {
+        const result = await Roadmap.deleteMany({ author: req.user.id, isDeleted: true });
+        res.json({ message: `Đã dọn sạch thùng rác (${result.deletedCount} lộ trình)` });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 // Update task progress and calculate SRS next review date
 export const updateTaskProgress = async (req, res) => {
     try {
@@ -203,8 +218,23 @@ export const updateTaskProgress = async (req, res) => {
                 taskFound = task;
 
                 // Update basic info
+                const wasCompleted = task.isCompleted;
                 if (isCompleted !== undefined) task.isCompleted = isCompleted;
                 if (timeSpent !== undefined) task.timeSpent += timeSpent; // Accumulate time
+
+                // If task just became completed, record an activity session for analytics
+                if (isCompleted === true && !wasCompleted) {
+                    const activitySession = new StudySession({
+                        user: userId,
+                        roadmap: roadmapId,
+                        taskId: taskId,
+                        startTime: new Date(new Date().getTime() - (timeSpent || 600) * 1000), // Default to 10 mins ago if only timeSpent is given
+                        endTime: new Date(),
+                        duration: timeSpent || 600, // Default 10 mins
+                        isCompleted: true
+                    });
+                    await activitySession.save();
+                }
 
                 // Update SRS logic
                 if (confidenceLevel !== undefined) {

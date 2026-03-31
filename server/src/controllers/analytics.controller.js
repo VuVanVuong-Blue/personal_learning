@@ -89,6 +89,8 @@ export const getProductivityStats = async (req, res) => {
         // Format Gold hour clearly: "20h - 21h"
         const goldHourFormatted = goldHour !== null ? `${goldHour}h - ${goldHour + 1}h` : 'Chưa đủ dữ liệu';
 
+        const totalFocusMinutes = Math.floor(totalDurationSeconds / 60);
+
         let burndownData = null;
 
         // If a specific roadmap is requested, return burndown data
@@ -115,7 +117,9 @@ export const getProductivityStats = async (req, res) => {
         }
 
         res.json({
-            focusHoursThisWeek,
+            focusHoursThisWeek: +(totalDurationSeconds / 3600).toFixed(1),
+            totalFocusSeconds: totalDurationSeconds,
+            totalFocusMinutes,
             goldHourFormatted,
             burndownData,
             totalSessionsRecent: recentSessions.length

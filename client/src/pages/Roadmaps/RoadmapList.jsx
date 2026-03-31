@@ -12,6 +12,7 @@ const RoadmapList = () => {
     const [activeTab, setActiveTab] = useState('my_roadmaps'); // my_roadmaps, community, trash
     const [roadmaps, setRoadmaps] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [clonedMap, setClonedMap] = useState({}); // originalId -> clonedId mapping
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isCreateAIModalOpen, setIsCreateAIModalOpen] = useState(false);
@@ -25,14 +26,24 @@ const RoadmapList = () => {
             setLoading(true);
 
             const res = await axiosClient.get('/roadmaps');
+            const allRoadmaps = res.data;
+
+            // Identify roadmaps cloned by the user
+            const mapping = {};
+            allRoadmaps.forEach(r => {
+                if (r.author?._id === user._id && r.originalRoadmap) {
+                    mapping[r.originalRoadmap] = r._id;
+                }
+            });
+            setClonedMap(mapping);
 
             let filtered = [];
             if (activeTab === 'my_roadmaps') {
-                filtered = res.data.filter(r => r.author._id === user._id && !r.isDeleted);
+                filtered = allRoadmaps.filter(r => r.author?._id === user._id && !r.isDeleted);
             } else if (activeTab === 'community') {
-                filtered = res.data.filter(r => r.isPublic === true && !r.isDeleted);
+                filtered = allRoadmaps.filter(r => r.isPublic === true && !r.isDeleted);
             } else if (activeTab === 'trash') {
-                filtered = res.data.filter(r => r.author._id === user._id && r.isDeleted);
+                filtered = allRoadmaps.filter(r => r.author?._id === user._id && r.isDeleted);
             }
 
             setRoadmaps(filtered);
@@ -84,6 +95,19 @@ const RoadmapList = () => {
             fetchRoadmaps();
         } catch (error) {
             toast.error("Lỗi khi xóa vĩnh viễn");
+        }
+    };
+
+    const handleClearAllTrash = async () => {
+        if (roadmaps.length === 0) return;
+        if (!window.confirm("CẢNH BÁO: Bạn có chắc chắn muốn XÓA VĨNH VIỄN TOÀN BỘ các lộ trình trong thùng rác không? Hành động này không thể hoàn tác!")) return;
+        
+        try {
+            const res = await axiosClient.delete('/roadmaps/trash/all');
+            toast.success(res.data.message);
+            fetchRoadmaps();
+        } catch (error) {
+            toast.error("Lỗi khi dọn thùng rác");
         }
     };
 
@@ -172,6 +196,21 @@ const RoadmapList = () => {
                 </button>
             </div>
 
+            {/* Trash Controls */}
+            {activeTab === 'trash' && roadmaps.length > 0 && (
+                <div className="flex justify-between items-center mb-6 px-2 animate-in fade-in slide-in-from-top-2">
+                    <p className="text-sm text-gray-500">
+                        Có <strong className="text-gray-900">{roadmaps.length}</strong> lộ trình trong thùng rác
+                    </p>
+                    <button 
+                        onClick={handleClearAllTrash}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded-xl text-sm font-bold transition-all shadow-sm"
+                    >
+                        <Trash2 className="w-4 h-4" /> Xóa tất cả vĩnh viễn
+                    </button>
+                </div>
+            )}
+
             {/* Content Area */}
             {loading ? (
                 <div className="text-center py-20 text-gray-500">Đang tải dữ liệu...</div>
@@ -182,7 +221,7 @@ const RoadmapList = () => {
                     <p className="text-gray-500 mt-1">Hãy tạo một lộ trình mới hoặc khám phá từ cộng đồng.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {roadmaps.map(roadmap => (
                         <div key={roadmap._id} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 group flex flex-col">
                             <div className="relative w-full aspect-video bg-gray-100 overflow-hidden">
@@ -209,15 +248,17 @@ const RoadmapList = () => {
                                         <CheckCircle2 className="w-3 h-3" />
                                         {roadmap.category || 'Tổng hợp'}
                                     </span>
-                                    <div className="flex items-center text-xs">
-                                        <span className="font-bold text-[#b4690e] mr-1">
-                                            {roadmap.averageRating > 0 ? roadmap.averageRating : '4.5'}
-                                        </span>
-                                        <Star className="w-3 h-3 text-[#e59819] fill-[#e59819]" />
-                                        <span className="text-[#6a6f73] ml-1">
-                                            ({roadmap.totalReviews > 0 ? roadmap.totalReviews : 600} đánh giá)
-                                        </span>
-                                    </div>
+                                    {activeTab === 'community' && (
+                                        <div className="flex items-center text-xs">
+                                            <span className="font-bold text-[#b4690e] mr-1">
+                                                {roadmap.averageRating || 0}
+                                            </span>
+                                            <Star className="w-3 h-3 text-[#e59819] fill-[#e59819]" />
+                                            <span className="text-[#6a6f73] ml-1">
+                                                ({roadmap.totalReviews || 0} đánh giá)
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-3 text-xs font-medium text-[#6a6f73] mb-4">
@@ -239,19 +280,37 @@ const RoadmapList = () => {
                                 <div className="mt-auto flex gap-2">
                                     {activeTab === 'community' ? (
                                         <>
-                                            <Link
-                                                to={`/roadmaps/${roadmap._id}`}
-                                                className="flex-1 py-1.5 text-center text-sm font-bold text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors"
-                                            >
-                                                Xem chi tiết
-                                            </Link>
-                                            <button
-                                                onClick={() => handleClone(roadmap._id)}
-                                                className="px-3 py-1.5 text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors flex items-center justify-center"
-                                                title="Clone về bộ sưu tập"
-                                            >
-                                                <Copy className="w-4 h-4" />
-                                            </button>
+                                            {roadmap.author?._id === user?._id ? (
+                                                <Link
+                                                    to={`/roadmaps/${roadmap._id}`}
+                                                    className="flex-1 py-1.5 text-center text-sm font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 rounded-sm transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <Library className="w-4 h-4" /> Mở lộ trình gốc
+                                                </Link>
+                                            ) : clonedMap[roadmap._id] ? (
+                                                <Link
+                                                    to={`/roadmaps/${clonedMap[roadmap._id]}`}
+                                                    className="flex-1 py-1.5 text-center text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 rounded-sm transition-colors flex items-center justify-center gap-2"
+                                                >
+                                                    <CheckCircle2 className="w-4 h-4" /> Đã trong túi đồ
+                                                </Link>
+                                            ) : (
+                                                <>
+                                                    <Link
+                                                        to={`/roadmaps/${roadmap._id}`}
+                                                        className="flex-1 py-1.5 text-center text-sm font-bold text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors"
+                                                    >
+                                                        Xem chi tiết
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleClone(roadmap._id)}
+                                                        className="px-3 py-1.5 text-gray-900 border border-gray-900 hover:bg-gray-100 rounded-sm transition-colors flex items-center justify-center"
+                                                        title="Clone về bộ sưu tập"
+                                                    >
+                                                        <Copy className="w-4 h-4" />
+                                                    </button>
+                                                </>
+                                            )}
                                         </>
                                     ) : activeTab === 'my_roadmaps' ? (
                                         <>

@@ -55,7 +55,7 @@ const CreateRoadmapAIModal = ({ isOpen, onClose, onSuccess }) => {
                 researchData
             });
 
-            toast.success("Tạo lộ trình AI thành công rực rỡ! 🚀");
+            toast.success("Tạo lộ trình AI thành công!");
             onSuccess(res5.data.data);
             handleClose();
         } catch (error) {
@@ -139,7 +139,7 @@ const CreateRoadmapAIModal = ({ isOpen, onClose, onSuccess }) => {
                                 type="submit"
                                 className="w-full py-4 mt-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.99] flex items-center justify-center gap-2 text-base"
                             >
-                                <Sparkles className="w-5 h-5" /> Khởi tạo Phép màu
+                                <Sparkles className="w-5 h-5" /> Khởi tạo lộ trình
                             </button>
                         </form>
                     ) : (

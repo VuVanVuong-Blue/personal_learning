@@ -13,7 +13,7 @@ import 'react-quill-new/dist/quill.snow.css';
 import EditRoadmapModal from '../../components/Roadmaps/EditRoadmapModal';
 import ReviewList from '../../components/Roadmaps/ReviewList';
 import PomodoroTimer from '../../components/Roadmaps/PomodoroTimer';
-import AIChatbot from '../../components/Roadmaps/AIChatbot';
+// import AIChatbot from '../../components/Roadmaps/AIChatbot';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -115,7 +115,7 @@ const SortableTask = ({
                                     value={editedContent}
                                     onChange={setEditedContent}
                                     modules={quillModules}
-                                    className="h-[400px] sm:h-96 pb-12"
+                                    className="h-[400px] sm:h-96 pb-12 break-words"
                                     placeholder="Viết nội dung bài giảng..."
                                 />
                             </div>
@@ -126,7 +126,7 @@ const SortableTask = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="prose prose-indigo max-w-none text-slate-800 mb-10">
+                        <div className="prose prose-indigo max-w-none break-words text-slate-800 mb-10">
                             {task.content ? (
                                 <div dangerouslySetInnerHTML={{ __html: task.content }} />
                             ) : (
@@ -543,6 +543,16 @@ const RoadmapWorkspace = () => {
         toast.success("Đã lưu nhật ký!");
     };
 
+    const handleTogglePublish = async () => {
+        try {
+            const res = await axiosClient.put(`/roadmaps/${id}`, { isPublic: !roadmap.isPublic });
+            setRoadmap(res.data);
+            toast.success(res.data.isPublic ? "Đã chuyển sang trạng thái Công khai" : "Đã chuyển sang trạng thái Riêng tư");
+        } catch (error) {
+            toast.error("Lỗi khi thay đổi trạng thái");
+        }
+    };
+
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
@@ -581,6 +591,12 @@ const RoadmapWorkspace = () => {
     const totalTasks = roadmap.milestones?.reduce((acc, m) => acc + (m.tasks?.length || 0), 0) || 0;
     const completedTasks = roadmap.milestones?.reduce((acc, m) => acc + (m.tasks?.filter(t => t.isCompleted)?.length || 0), 0) || 0;
     const progressPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+    // Calculate total focus time for THIS roadmap
+    const totalTimeSeconds = roadmap.milestones?.reduce((acc, m) => {
+        return acc + (m.tasks?.reduce((tAcc, t) => tAcc + (t.timeSpent || 0), 0) || 0);
+    }, 0) || 0;
+    const totalTimeMinutes = Math.floor(totalTimeSeconds / 60);
 
     let activeTask = null;
     let parentMilestone = null;
@@ -627,7 +643,38 @@ const RoadmapWorkspace = () => {
             <div className="max-w-[1280px] mx-auto w-full px-6 -mt-20 relative z-20 flex flex-col lg:flex-row gap-8 items-start">
                 
                 {/* Left Column - 70% Accordion List */}
-                <div className="w-full lg:flex-[2.5] flex flex-col gap-6">
+                <div className="w-full lg:flex-[2.5] flex flex-col gap-6 min-w-0">
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-lg">
+                                <Trophy className="w-5 h-5 text-indigo-600" /> Tiến độ hiện tại
+                            </h3>
+                            <div className="flex flex-col items-end">
+                                <span className="text-2xl font-black text-indigo-600">{progressPercent}%</span>
+                                <span className="text-xs font-bold text-slate-400 uppercase">{completedTasks}/{totalTasks} bài học</span>
+                            </div>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-3 mb-6 overflow-hidden">
+                            <div className="bg-indigo-600 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${progressPercent}%` }}></div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-6">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                                    <Clock className="w-3 h-3" /> Tổng thời gian học
+                                </span>
+                                <span className="text-lg font-bold text-slate-800">{totalTimeMinutes} <span className="text-xs font-medium text-slate-500">phút</span></span>
+                            </div>
+                            <div className="flex flex-col gap-1 items-end text-right">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 justify-end">
+                                    <Globe className="w-3 h-3" /> Chế độ
+                                </span>
+                                <span className={`text-xs font-bold px-2 py-1 rounded-md ${roadmap.isPublic ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
+                                    {roadmap.isPublic ? 'Public' : 'Private'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                     <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-4 md:p-8 border border-slate-100">
                         <div className="flex items-center justify-between mb-8 px-4">
                             <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Syllabus Lộ trình</h2>
@@ -667,6 +714,15 @@ const RoadmapWorkspace = () => {
                                 </SortableContext>
                             </DndContext>
                         )}
+
+                        {/* Community Reviews Section */}
+                        <div className="mt-12 border-t border-slate-100 pt-12">
+                            <ReviewList 
+                                roadmapId={roadmap.originalRoadmap || roadmap._id} 
+                                isAuthor={!roadmap.originalRoadmap && user?._id === roadmap.author?._id}
+                                roadmapTitle={roadmap.title}
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -720,7 +776,7 @@ const RoadmapWorkspace = () => {
                                 <span className="flex items-center gap-3"><Edit2 className="w-5 h-5" /> Cài đặt chung</span>
                                 <ChevronRight className="w-4 h-4 opacity-50" />
                             </button>
-                            <button className="flex items-center justify-between w-full p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all font-semibold text-slate-700 hover:text-emerald-700">
+                            <button onClick={handleTogglePublish} className="flex items-center justify-between w-full p-3 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 rounded-xl transition-all font-semibold text-slate-700 hover:text-emerald-700">
                                 <span className="flex items-center gap-3"><Globe className="w-5 h-5" /> Trạng thái xuất bản</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs px-2 py-1 bg-white rounded-md shadow-sm border border-slate-200">{roadmap.isPublic ? 'Public' : 'Private'}</span>
@@ -735,7 +791,7 @@ const RoadmapWorkspace = () => {
             {/* Modals & Add-ons */}
             <EditRoadmapModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} roadmap={roadmap} onUpdate={(updated) => setRoadmap(updated)} />
             {activeTaskId && <PomodoroTimer roadmapId={roadmap._id} taskId={activeTaskId} />}
-            <AIChatbot currentTask={activeTask} />
+            {/* <AIChatbot currentTask={activeTask} /> */}
 
             {/* Add Task Modal */}
             {addingTaskMilestoneId && (

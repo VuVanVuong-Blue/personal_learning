@@ -32,6 +32,18 @@ const UserActivity = () => {
     if (!user) {
         return <div className="text-center py-20">Vui lòng đăng nhập để xem thông tin hoạt động.</div>;
     }
+    
+    // Helper to format total focus time
+    const formatFocusTime = (seconds) => {
+        if (!seconds || seconds <= 0) return "0 phút";
+        const h = Math.floor(seconds / 3600);
+        const m = Math.round((seconds % 3600) / 60);
+        
+        if (h > 0) {
+            return `${h} giờ ${m > 0 ? `${m} phút` : ''}`;
+        }
+        return `${m} phút`;
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-6 py-8">
@@ -58,7 +70,9 @@ const UserActivity = () => {
                                     <Clock className="w-6 h-6 text-indigo-600" />
                                 </div>
                                 <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wider">Giờ Tập Trung</h3>
-                                <p className="text-3xl font-bold text-indigo-700 mt-2">{productivity.focusHoursThisWeek} <span className="text-base font-normal text-indigo-500">giờ</span></p>
+                                <p className="text-3xl font-bold text-indigo-700 mt-2">
+                                    {formatFocusTime(productivity.totalFocusSeconds)}
+                                </p>
                             </div>
                             <div className="bg-amber-50 border border-amber-100 rounded-2xl p-6 flex flex-col justify-center items-center text-center">
                                 <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">

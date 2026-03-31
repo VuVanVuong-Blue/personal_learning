@@ -8,6 +8,7 @@ import {
     cloneRoadmap,
     restoreRoadmap,
     hardDeleteRoadmap,
+    clearAllTrash,
     checkCloneStatus,
     updateTaskProgress,
     getDailyReviewTasks
@@ -21,6 +22,7 @@ router.use(verifyToken); // All roadmap routes require login right now
 router.get('/daily-review', getDailyReviewTasks);
 router.get('/', getRoadmaps);
 router.post('/', createRoadmap);
+router.delete('/trash/all', clearAllTrash);
 router.get('/:id', getRoadmapById);
 router.put('/:id', updateRoadmap);
 router.put('/:id/tasks/:taskId/progress', updateTaskProgress);
