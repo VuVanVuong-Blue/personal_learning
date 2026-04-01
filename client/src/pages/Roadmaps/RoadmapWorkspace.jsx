@@ -6,13 +6,14 @@ import { toast } from 'sonner';
 import { 
     ArrowLeft, CheckCircle2, Circle, ChevronDown, ChevronRight, Edit2, 
     Plus, GripVertical, Save, X, Link as LinkIcon, FileText, Youtube, 
-    Trash2, Smile, Meh, Frown, Globe, Lock, Settings, PlayCircle, BookOpen, Star, Clock, Trophy
+    Trash2, Smile, Meh, Frown, Globe, Lock, Settings, PlayCircle, BookOpen, Star, Clock, Trophy, Brain
 } from 'lucide-react';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import EditRoadmapModal from '../../components/Roadmaps/EditRoadmapModal';
 import ReviewList from '../../components/Roadmaps/ReviewList';
 import PomodoroTimer from '../../components/Roadmaps/PomodoroTimer';
+import MilestoneQuizModal from '../../components/Roadmaps/MilestoneQuizModal';
 // import AIChatbot from '../../components/Roadmaps/AIChatbot';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -22,7 +23,32 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+// --- Utility: Fix AI-generated content stored with bad formatting in DB ---
+// Các data cũ có thể bị gộp emoji sections vào 1 đoạn văn duy nhất
+// Hàm này tách chúng ra và thêm khoảng cách đúng chỗ
+const formatTaskContent = (html) => {
+    if (!html) return '';
+
+    const SECTION_EMOJIS = ['💡', '🧠', '🚀', '🔗', '📌', '⚡', '✅', '🏆', '🎯'];
+
+    let result = html;
+
+    // Bước 1: Thêm break trước emoji section nằm giữa đoạn văn
+    // Pattern: ký tự thường/chữ → emoji section (không phải đầu thẻ HTML)
+    SECTION_EMOJIS.forEach((emoji, idx) => {
+        // Bỏ qua 🎯 ở đầu nội dung - chỉ xử lý các emoji ở giữa
+        const regex = new RegExp(`([^>\\n])\\s*(${emoji})`, 'g');
+        result = result.replace(regex, `$1<span class="task-section-gap"></span>${emoji}`);
+    });
+
+    // Bước 2: Nếu bảng (table) nằm trong <p>, tách ra ngoài
+    result = result.replace(/<p([^>]*)>([^<]*<table)/g, '<p$1>$2');
+
+    return result;
+};
+
 // --- Sub-components for DnD and Tasks ---
+
 
 const SortableTask = ({ 
     task, milestoneId, activeTaskId, setActiveTaskId, handleToggleComplete, 
@@ -126,9 +152,9 @@ const SortableTask = ({
                             </div>
                         </div>
                     ) : (
-                        <div className="prose prose-indigo max-w-none break-words text-slate-800 mb-10">
+                        <div className="task-prose prose prose-indigo max-w-none break-words text-slate-800 mb-10">
                             {task.content ? (
-                                <div dangerouslySetInnerHTML={{ __html: task.content }} />
+                                <div dangerouslySetInnerHTML={{ __html: formatTaskContent(task.content) }} />
                             ) : (
                                 <div className="p-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                                     <p className="text-slate-500 italic mb-4">Bài học này chưa có nội dung chi tiết.</p>
@@ -224,8 +250,11 @@ const SortableMilestone = ({
     setEditedContent, handleSaveContent, resources, handleDeleteResource, 
     isAddingResource, setIsAddingResource, resourceForm, setResourceForm, 
     handleAddResource, handleUpdateAssessment, localReflection, setLocalReflection, handleSaveReflection,
-    addingTaskMilestoneId, setAddingTaskMilestoneId, newTaskTitle, setNewTaskTitle
+    addingTaskMilestoneId, setAddingTaskMilestoneId, newTaskTitle, setNewTaskTitle,
+    onStartQuiz
 }) => {
+    const isMilestoneCompleted = milestone.tasks?.length > 0 &&
+        milestone.tasks.every(t => t.isCompleted);
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: `milestone-${milestone._id}` });
 
     const style = { transform: CSS.Transform.toString(transform), transition };
@@ -251,6 +280,17 @@ const SortableMilestone = ({
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Quiz button — only when all tasks completed */}
+                    {isMilestoneCompleted && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onStartQuiz(milestone); }}
+                            className="flex items-center gap-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-indigo-200 hover:scale-105 active:scale-95 shrink-0"
+                            title="Kiểm tra kiến thức chặng này"
+                        >
+                            <Brain className="w-3.5 h-3.5" />
+                            Kiểm tra
+                        </button>
+                    )}
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={(e) => { e.stopPropagation(); handleEditMilestone(milestone._id, milestone.title); }} className="p-2 bg-white shadow-sm border border-slate-200 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors" title="Sửa tên chặng"><Edit2 className="w-4 h-4" /></button>
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteMilestone(milestone._id); }} className="p-2 bg-white shadow-sm border border-slate-200 text-slate-500 hover:text-rose-600 rounded-lg transition-colors" title="Xóa chặng"><Trash2 className="w-4 h-4" /></button>
@@ -342,6 +382,9 @@ const RoadmapWorkspace = () => {
     const [isAddingResource, setIsAddingResource] = useState(false);
     const [resourceForm, setResourceForm] = useState({ name: '', url: '', type: 'link' });
     const [localReflection, setLocalReflection] = useState('');
+
+    // Quiz Modal State
+    const [quizModal, setQuizModal] = useState(null); // null | milestone object
 
     useEffect(() => {
         const fetchRoadmap = async () => {
@@ -709,6 +752,7 @@ const RoadmapWorkspace = () => {
                                             setLocalReflection={setLocalReflection} handleSaveReflection={handleSaveReflection}
                                             addingTaskMilestoneId={addingTaskMilestoneId} setAddingTaskMilestoneId={setAddingTaskMilestoneId}
                                             newTaskTitle={newTaskTitle} setNewTaskTitle={setNewTaskTitle}
+                                            onStartQuiz={(m) => setQuizModal(m)}
                                         />
                                     ))}
                                 </SortableContext>
@@ -792,6 +836,14 @@ const RoadmapWorkspace = () => {
             <EditRoadmapModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} roadmap={roadmap} onUpdate={(updated) => setRoadmap(updated)} />
             {activeTaskId && <PomodoroTimer roadmapId={roadmap._id} taskId={activeTaskId} />}
             {/* <AIChatbot currentTask={activeTask} /> */}
+
+            {/* AI Quiz Modal */}
+            {quizModal && (
+                <MilestoneQuizModal
+                    milestone={quizModal}
+                    onClose={() => setQuizModal(null)}
+                />
+            )}
 
             {/* Add Task Modal */}
             {addingTaskMilestoneId && (
