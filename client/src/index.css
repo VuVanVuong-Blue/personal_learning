@@ -1,1 +1,112 @@
 @import "tailwindcss";
+
+/* ===== Task Content Prose Formatting ===== */
+
+/* 
+  .task-section-gap: được chèn bởi formatTaskContent() trước mỗi emoji section
+  Tạo khoảng cách 1.15em giữa các mục lớn (🎯 💡 🧠 🚀 🔗)
+*/
+.task-section-gap {
+    display: block;
+    height: 1.15em;
+    width: 100%;
+}
+
+/* 
+  .task-prose: container cho nội dung bài học do AI tạo ra
+  Đảm bảo line-height và spacing đúng chuẩn
+*/
+.task-prose {
+    line-height: 1.75;
+}
+
+.task-prose p {
+    margin-top: 0.85em;
+    margin-bottom: 0.85em;
+    line-height: 1.75;
+}
+
+.task-prose p:first-child {
+    margin-top: 0;
+}
+
+/* Headings trong nội dung bài học */
+.task-prose h1,
+.task-prose h2,
+.task-prose h3,
+.task-prose h4 {
+    margin-top: 1.5em;
+    margin-bottom: 0.6em;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.3;
+}
+
+/* Bullet / numbered list */
+.task-prose ul,
+.task-prose ol {
+    margin-top: 0.75em;
+    margin-bottom: 0.75em;
+    padding-left: 1.5em;
+}
+
+.task-prose li {
+    margin-top: 0.4em;
+    margin-bottom: 0.4em;
+    line-height: 1.65;
+}
+
+/* Code block */
+.task-prose pre {
+    margin-top: 1.15em;
+    margin-bottom: 1.15em;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+}
+
+.task-prose code {
+    font-size: 0.875em;
+}
+
+/* Table */
+.task-prose table {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.task-prose th,
+.task-prose td {
+    padding: 0.5em 0.75em;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+    line-height: 1.5;
+}
+
+.task-prose th {
+    background-color: #f8fafc;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.task-prose tr:nth-child(even) td {
+    background-color: #f8fafc;
+}
+
+/* Blockquote */
+.task-prose blockquote {
+    margin-top: 1em;
+    margin-bottom: 1em;
+    border-left: 3px solid #6366f1;
+    padding-left: 1em;
+    color: #475569;
+    font-style: italic;
+}
+
+/* Strong / bold trong prose */
+.task-prose strong {
+    color: #0f172a;
+    font-weight: 700;
+}

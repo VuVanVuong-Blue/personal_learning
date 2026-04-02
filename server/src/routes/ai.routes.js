@@ -1,5 +1,5 @@
 import express from 'express';
-import { analyzeTopic, generateMilestones, researchWebContext, generateTasks, formatAndSaveRoadmap, chatWithMentor } from '../controllers/ai.controller.js';
+import { analyzeTopic, generateMilestones, researchWebContext, generateTasks, formatAndSaveRoadmap, chatWithMentor, generateMilestoneQuiz } from '../controllers/ai.controller.js';
 import { verifyToken } from '../middlewares/verifyToken.js';
 
 const router = express.Router();
@@ -14,5 +14,8 @@ router.post('/roadmap/step4-teacher', generateTasks);
 router.post('/roadmap/step5-format', formatAndSaveRoadmap);
 
 router.post('/mentor/chat', chatWithMentor);
+
+// Quiz Generator
+router.post('/quiz/generate', generateMilestoneQuiz);
 
 export default router;
